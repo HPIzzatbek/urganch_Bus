@@ -1,0 +1,9 @@
+.venv/
+venv/
+backend/venv/
+.idea/
+__pycache__/
+*.pyc
+urganch_bus.db
+.env
+node_modules/
