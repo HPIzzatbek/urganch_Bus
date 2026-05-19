@@ -10,7 +10,7 @@ import { initMap, drawRoute, clearRoute, dimInactiveRoutes, resetAllRouteStyles,
 import { startCountdown, stopAllCountdowns, getSecondsUntil } from './timer.js';
 
 // ─── API bazaviy manzili ──────────────────────────────────────────────────────
-const API_BASE = 'http://127.0.0.1:5000';
+const API_BASE = '';
 
 // ─── Global holat ─────────────────────────────────────────────────────────────
 let allRoutes       = [];   // API dan kelgan barcha yo'nalishlar
