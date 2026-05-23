@@ -3,816 +3,853 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Urganch Shahar Jamoat Transporti Tizimi</title>
-    <!-- Leaflet CSS -->
+    <title>Urganch Shahar Jamoat Transporti</title>
+    <!-- Leaflet va uning pluginlari uchun CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- FontAwesome Iconlar uchun -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
-        /* Umumiy uslublar */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
-        }
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #f4f6f9;
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --sidebar-bg: #f8f9fa;
+            --primary-blue: #007bff;
+            --border-color: #cccccc;
         }
 
-        /* Xarita konteyneri - To'liq ekran */
-        #map {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-            transition: filter 0.3s;
+        [data-theme="dark"] {
+            --bg-color: #1c1c1e;
+            --text-color: #ffffff;
+            --sidebar-bg: #2c2c2e;
+            --primary-blue: #0a84ff;
+            --border-color: #444446;
         }
 
-        /* Yuqori panel (3 ta chiziq va rejimlar) */
-        .top-bar {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .menu-btn {
-            background: white;
-            border: none;
-            width: 45px;
-            height: 45px;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            color: #333;
-            transition: background 0.2s;
-        }
-        .menu-btn:hover { background: #f0f0f0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { display: flex; height: 100vh; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); }
 
-        .theme-panel {
-            background: white;
-            padding: 5px 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            display: flex;
-            gap: 10px;
+        #map { flex: 1; height: 100%; width: 100%; position: relative; z-index: 1; }
+
+        .top-panel {
+            position: absolute; top: 15px; left: 70px; z-index: 1000;
+            display: flex; gap: 10px; background: rgba(255,255,255,0.9);
+            padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
+        [data-theme="dark"] .top-panel { background: rgba(44, 44, 46, 0.9); }
+
         .theme-btn {
-            background: none;
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 14px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; display: flex; align-items: center; gap: 5px; background: #e5e5ea; color: #333;
         }
-        .theme-btn.active {
-            background: #007bff;
-            color: white;
+        .theme-btn.active { background-color: var(--primary-blue); color: white; }
+
+        .burger-btn {
+            position: absolute; top: 15px; left: 15px; z-index: 1001;
+            background: var(--primary-blue); color: white; border: none;
+            padding: 12px; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
 
-        /* Chap Yon Panel (Sidebar) */
         .sidebar {
-            position: absolute;
-            top: 0;
-            left: -320px;
-            width: 320px;
-            height: 100%;
-            background: white;
-            z-index: 9;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.15);
-            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            flex-direction: row;
+            width: 320px; background: var(--sidebar-bg); height: 100%;
+            display: flex; flex-direction: row; position: absolute; left: -320px;
+            top: 0; z-index: 999; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.3);
         }
         .sidebar.open { left: 0; }
+        .sidebar-content { width: 310px; height: 100%; overflow-y: auto; padding: 15px; }
 
-        /* Bo'limlar konteyneri */
-        .sidebar-content {
-            flex: 1;
-            height: 100%;
-            overflow-y: auto;
-            padding-top: 75px;
-            padding-bottom: 20px;
-            scrollbar-width: none; /* Firefox uchun */
+        .sidebar-splitter {
+            width: 10px; background: var(--border-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
         }
-        .sidebar-content::-webkit-scrollbar { display: none; } /* Chrome/Safari uchun */
+        .scroll-indicator { width: 6px; height: 40px; background: #000000; border-radius: 3px; }
+        [data-theme="dark"] .scroll-indicator { background: #ffffff; }
 
-        /* Ajratuvchi Chiziq va Rezina Slider (Scroll tasmali maxsus moslama) */
-        .sidebar-divider {
-            width: 6px;
-            height: 100%;
-            background: #e0e0e0;
-            position: relative;
-            cursor: ns-resize;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .scroll-thumb-indicator {
-            width: 14px;
-            height: 40px;
-            background: #333;
-            border-radius: 4px;
-            position: absolute;
-            left: -4px;
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
-            transition: background 0.2s;
-        }
-        .scroll-thumb-indicator:hover { background: #007bff; }
+        .sidebar-main-divider { height: 4px; background-color: var(--primary-blue); margin: 65px 0 15px 0; border-radius: 2px; }
 
-        /* Avtobus Ikonkasi uchun maxsus joy (Profil tepasida) */
-        .brand-header {
-            text-align: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .brand-header i {
-            font-size: 35px;
-            color: #007bff;
-        }
+        .menu-section { margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; border-bottom: 3px solid var(--border-color); position: relative; z-index: 5; }
+        .profile-section-wrapper { position: relative; z-index: 10; }
 
-        /* Akordeon Menu Tizimi */
-        .menu-item {
-            border-bottom: 1px solid #f0f0f0;
-        }
-        .menu-header {
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            font-weight: 600;
-            color: #444;
-            transition: all 0.2s;
-        }
-        .menu-header:hover { background: #f8f9fa; }
-        .menu-header.active {
-            background: #007bff !important;
-            color: white !important;
-        }
-        .menu-body {
-            display: none;
-            background: #fafafa;
-            padding: 15px 20px;
-            border-top: 1px solid #eee;
-        }
+        .menu-header { background: var(--primary-blue); color: white; padding: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .menu-body { padding: 15px; background: var(--bg-color); display: none; }
 
-        /* Ichki sahifalar uchun uslublar */
-        .sub-page {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: box-shadow 0.2s;
-        }
-        .sub-page:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .sub-title {
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 8px;
-            color: #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        .route-list-item { padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s ease; }
+        .route-list-item:hover { background: rgba(0, 0, 0, 0.05); }
+        .route-list-item.selected-active { font-weight: bold; box-shadow: inset 5px 0 0 0 currentColor; }
 
-        .form-group {
-            margin-bottom: 10px;
-        }
-        .form-group label {
-            display: block;
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 3px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 13px;
-            outline: none;
-        }
-        .form-group input:focus { border-color: #007bff; }
+        .bus-profile-icon { text-align: center; margin: 10px 0; font-size: 40px; color: var(--primary-blue); }
 
-        .input-pwd-container {
-            position: relative;
-        }
-        .pwd-toggle {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #777;
-        }
+        .form-group { margin-bottom: 12px; position: relative; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color); }
+        .password-toggle { position: absolute; right: 10px; top: 32px; cursor: pointer; color: #666; }
 
-        .btn-action {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-        .btn-danger { background: #dc3545; }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-blue { background: var(--primary-blue); color: white; }
+        .btn-red { background: #dc3545; color: white; }
+        .btn-green { background: #28a745; color: white; }
 
-        /* Yo'nalish ro'yxatlari interfeysi */
-        .route-item {
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            background: white;
-            border-left: 5px solid #ccc;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .route-item:hover { transform: translateX(3px); }
-        .route-item.r-active { box-shadow: 0 0 8px rgba(0,0,0,0.15); }
+        .timetable-panel { position: absolute; right: -350px; top: 0; width: 340px; height: 100%; background: var(--sidebar-bg); z-index: 999; transition: right 0.3s ease; box-shadow: -2px 0 10px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
+        .timetable-panel.open { right: 0; }
+        .table-data { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .table-data th, .table-data td { border: 1px solid var(--border-color); padding: 8px; text-align: left; font-size: 12px; }
+        .table-data th { background: var(--primary-blue); color: white; }
 
-        /* O'ng Tomondagi Avtomatik Jadval Paneli */
-        .right-schedule-panel {
-            position: absolute;
-            top: 15px;
-            right: -350px;
-            width: 320px;
-            max-height: 85%;
-            background: white;
-            z-index: 10;
-            box-shadow: -5px 0 15px rgba(0,0,0,0.15);
-            border-radius: 8px;
-            transition: right 0.3s ease;
-            overflow-y: auto;
-            padding: 20px;
-        }
-        .right-schedule-panel.open { right: 15px; }
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-        .schedule-table th, .schedule-table td {
-            border: 1px solid #ddd;
-            padding: 6px;
-            text-align: center;
-        }
-        .schedule-table th { background: #f2f2f2; }
+        .leaflet-right .leaflet-control-zoom { margin-bottom: 25px; margin-right: 15px; }
 
-        /* Leaflet Control o'ng pastga ko'chirish */
-        .leaflet-right .leaflet-control-zoom {
-            margin-bottom: 25px !important;
-            margin-right: 15px !important;
-        }
+        .lang-option { padding: 10px; margin-bottom: 5px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+        .lang-option:hover { background: rgba(0,0,0,0.05); }
+        .lang-option.active-lang { background: var(--primary-blue); color: white; border-color: var(--primary-blue); }
 
-        /* Kechki rejim filtri */
-        .dark-mode-map {
-            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-        }
+        /* OSRM Routing boshqaruv panelini yashirish uchun */
+        .leaflet-routing-container { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Yuqori boshqaruv paneli -->
-    <div class="top-bar">
-        <button class="menu-btn" id="menuToggleBtn" title="Menyuni ochish/yopish">
-            <i class="fa-solid fa-bars"></i>
-        </button>
-        <div class="theme-panel">
-            <button class="theme-btn active" id="dayBtn"><i class="fa-solid fa-sun"></i> Kunduzgi</button>
-            <button class="theme-btn" id="nightBtn"><i class="fa-solid fa-moon"></i> Kechki</button>
-        </div>
+    <button class="burger-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+
+    <div class="top-panel">
+        <button class="theme-btn active" id="btn-day" onclick="setTheme('day')"><i class="fas fa-sun"></i> <span id="txt-mode-day">Kunduzgi</span></button>
+        <button class="theme-btn" id="btn-night" onclick="setTheme('night')"><i class="fas fa-moon"></i> <span id="txt-mode-night">Kechki</span></button>
     </div>
 
-    <!-- O'ng tomondagi Jonli Jadval Ustuni -->
-    <div class="right-schedule-panel" id="rightSchedulePanel">
-        <h3 style="font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 5px;">Harakatlanish Jadvali (Avtomatik)</h3>
-        <div id="scheduleContainer"></div>
-    </div>
-
-    <!-- Chap Yon Panel -->
     <div class="sidebar" id="sidebar">
-        <!-- Bo'limlar kontenti -->
-        <div class="sidebar-content" id="sidebarContent">
+        <div class="sidebar-content">
+            <div class="sidebar-main-divider"></div>
 
-            <!-- Avtobus Ikonkasi (Ajratuvchidan yuqoriga chiqib ketmaydi) -->
-            <div class="brand-header">
-                <i class="fa-solid fa-bus-simple"></i>
-            </div>
-
-            <!-- PROFIL BO'LIMI -->
-            <div class="menu-item">
-                <div class="menu-header" onclick="toggleMenuSection(this)">
-                    <span><i class="fa-solid fa-user-gear"></i> Profil</span>
-                    <i class="fa-solid fa-chevron-down"></i>
+            <div class="menu-section profile-section-wrapper">
+                <div class="menu-header" onclick="toggleSection('sec-profil')">
+                    <span><i class="fas fa-user"></i> <span id="lbl-menu-profil">Profil</span></span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
-                <div class="menu-body" id="profilSectionBody">
-                    <!-- Mening ma'lumotlarim sahifasi -->
-                    <div class="sub-page" id="profMyInfoPage">
-                        <div class="sub-title">Mening ma'lumotlarim</div>
+                <div class="menu-body" id="sec-profil">
+                    <div class="bus-profile-icon"><i class="fas fa-bus"></i></div>
+                    <div id="sub-my-info">
+                        <h4 style="margin-bottom:8px;"><span id="lbl-my-info">Mening ma'lumotlarim</span> <i class="fas fa-edit" style="cursor:pointer;" onclick="enableEditProfile()"></i></h4>
                         <div class="form-group">
-                            <label>Familiya</label>
-                            <input type="text" id="p_fa" value="Eshonov" placeholder="Kiriting...">
+                            <label id="lbl-surname">Familiya</label>
+                            <input type="text" id="p-surname" disabled>
                         </div>
                         <div class="form-group">
-                            <label>Ism</label>
-                            <input type="text" id="p_is" value="Jasur" placeholder="Kiriting...">
+                            <label id="lbl-name">Ism</label>
+                            <input type="text" id="p-name" disabled>
                         </div>
                         <div class="form-group">
-                            <label>Telefon raqam</label>
-                            <input type="text" id="p_te" value="+998991234567" placeholder="Kiriting...">
+                            <label id="lbl-phone">Telefon raqam</label>
+                            <input type="text" id="p-phone" disabled>
                         </div>
+                        <button class="btn btn-blue" id="btn-save-profile" style="display:none;" onclick="saveProfile()">Saqlash</button>
                     </div>
-                    <!-- Admin va parol kiritish sahifasi -->
-                    <div class="sub-page" id="profAdminPage">
-                        <div class="sub-title">Admin va parol kiritish</div>
+                    <hr style="margin:15px 0; border-color:var(--border-color);">
+                    <div id="sub-admin-login">
+                        <h4 id="lbl-admin-title">Admin va parol kiritish</h4>
                         <div class="form-group">
-                            <label>Login (Admin)</label>
-                            <input type="text" id="loginInput" value="" placeholder="Admin logini">
+                            <label id="lbl-login">Login (Admin)</label>
+                            <input type="text" id="login-user" placeholder="Admin logini">
                         </div>
                         <div class="form-group">
-                            <label>Parol</label>
-                            <div class="input-pwd-container">
-                                <input type="password" id="passInput" value="" placeholder="Parol">
-                                <i class="fa-solid fa-eye pwd-toggle" onclick="togglePasswordVisibility('passInput', this)"></i>
-                            </div>
+                            <label id="lbl-pass">Parol</label>
+                            <input type="password" id="login-pass" placeholder="Parol">
+                            <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('login-pass')"></i>
                         </div>
-                        <button class="btn-action" onclick="checkAdminLogin()">Kirish</button>
+                        <button class="btn btn-blue" id="btn-login-submit" onclick="checkAdminLogin()">Kirish</button>
                     </div>
                 </div>
             </div>
 
-            <!-- YO'NALISHLAR BO'LIMI -->
-            <div class="menu-item">
-                <div class="menu-header" onclick="toggleMenuSection(this)">
-                    <span><i class="fa-solid fa-route"></i> Yoʻnalishlar</span>
-                    <i class="fa-solid fa-chevron-down"></i>
+            <div class="menu-section">
+                <div class="menu-header" onclick="toggleSection('sec-yonalishlar')">
+                    <span><i class="fas fa-route"></i> <span id="lbl-menu-yonalish">Yo'nalishlar</span></span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
-                <div class="menu-body">
-                    <p style="font-size: 11px; color:#777; margin-bottom:10px;">Ustiga bosing - Xaritada ko'rsatiladi:</p>
-                    <div id="routesListContainer"></div>
+                <div class="menu-body" id="sec-yonalishlar">
+                    <div id="routes-list-container"></div>
                 </div>
             </div>
 
-            <!-- JADVAL BO'LIMI -->
-            <div class="menu-item">
-                <div class="menu-header" id="menuScheduleHeader" onclick="toggleMenuSection(this); toggleRightSchedule();">
-                    <span><i class="fa-solid fa-calendar-days"></i> Jadval</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-                <div class="menu-body">
-                    <p style="font-size: 12px; color:#555;">Jadval oynasi o'ng tomonda ustun shaklida ochildi.</p>
+            <div class="menu-section">
+                <div class="menu-header" onclick="toggleTimetablePanel()">
+                    <span><i class="fas fa-calendar-alt"></i> <span id="lbl-menu-jadval">Jadval</span></span>
+                    <i class="fas fa-chevron-right"></i>
                 </div>
             </div>
 
-            <!-- BEKATLAR BO'LIMI -->
-            <div class="menu-item">
-                <div class="menu-header" onclick="toggleMenuSection(this)">
-                    <span><i class="fa-solid fa-map-pin"></i> Bekatlar</span>
-                    <i class="fa-solid fa-chevron-down"></i>
+            <div class="menu-section">
+                <div class="menu-header" onclick="toggleSection('sec-bekatlar')">
+                    <span><i class="fas fa-map-marker-alt"></i> <span id="lbl-menu-bekat">Bekatlar</span></span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
-                <div class="menu-body" id="stationsListContainer">
-                    <!-- Avtomatik bekatlar ro'yxati -->
+                <div class="menu-body" id="sec-bekatlar">
+                    <div id="stops-list-container"></div>
                 </div>
             </div>
 
-            <!-- TIL BO'LIMI -->
-            <div class="menu-item">
-                <div class="menu-header" onclick="toggleMenuSection(this)">
-                    <span><i class="fa-solid fa-language"></i> Til</span>
-                    <i class="fa-solid fa-chevron-down"></i>
+            <div class="menu-section">
+                <div class="menu-header" onclick="toggleSection('sec-til')">
+                    <span><i class="fas fa-language"></i> <span id="lbl-menu-til">Til</span></span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
-                <div class="menu-body">
-                    <div class="sub-page">
-                        <div style="font-size: 13px; font-weight:bold; color: #28a745;"><i class="fa-solid fa-circle-check"></i> Faol til: O'zbekcha (UZ)</div>
+                <div class="menu-body" id="sec-til">
+                    <p style="margin-bottom: 10px;"><span id="lbl-current-lang">Hozirgi til:</span> <strong id="current-lang-label">O'zbekcha</strong></p>
+                    <div class="lang-option" id="lang-uz" onclick="changeLanguage('uz')">O'zbekcha <i class="fas fa-check check-icon" style="display:none;"></i></div>
+                    <div class="lang-option" id="lang-ru" onclick="changeLanguage('ru')">Русский <i class="fas fa-check check-icon" style="display:none;"></i></div>
+                    <div class="lang-option" id="lang-en" onclick="changeLanguage('en')">English <i class="fas fa-check check-icon" style="display:none;"></i></div>
+                </div>
+            </div>
+
+            <div class="menu-section" id="main-settings-section" style="display:none;">
+                <div class="menu-header" onclick="toggleSection('sec-sozlamalar')">
+                    <span><i class="fas fa-cog"></i> <span id="lbl-menu-sozlamalar">Sozlamalar (Admin)</span></span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="menu-body" id="sec-sozlamalar">
+                    <div style="border:1px solid var(--border-color); padding:10px; border-radius:5px; margin-bottom:10px;">
+                        <h5><span id="lbl-set-admin">Admin va parolni sozlash</span></h5>
+                        <div class="form-group" style="margin-top:5px;">
+                            <label id="lbl-new-login">Yangi Admin logini</label>
+                            <input type="text" id="new-admin-login" value="Izzat">
+                        </div>
+                        <div class="form-group">
+                            <label id="lbl-new-pass">Yangi Parol</label>
+                            <input type="password" id="new-admin-pass" value="Urganch2026">
+                            <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('new-admin-pass')"></i>
+                        </div>
+                        <button class="btn btn-blue" id="btn-admin-save" onclick="saveAdminSettings()">Saqlash</button>
                     </div>
-                </div>
-            </div>
 
-            <!-- SOZLAMALAR BO'LIMI -->
-            <div class="menu-item">
-                <div class="menu-header" onclick="toggleMenuSection(this)">
-                    <span><i class="fa-solid fa-sliders"></i> Sozlamalar</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-                <div class="menu-body">
-                    <!-- Admin va parol sozlash -->
-                    <div class="sub-page" id="settAdminPanel">
-                        <div class="sub-title">Admin va parolni sozlash <i class="fa-solid fa-pen-to-square" style="color:#007bff;" title="Tahrirlash"></i></div>
-                        <div style="border-top:1px dashed #ccc; margin-top:5px; padding-top:5px;">
-                            <div class="form-group">
-                                <label>Yangi Admin logini</label>
-                                <input type="text" id="s_adm" value="admin">
-                            </div>
-                            <div class="form-group">
-                                <label>Yangi Parol</label>
-                                <div class="input-pwd-container">
-                                    <input type="password" id="s_pas" value="12345">
-                                    <i class="fa-solid fa-eye pwd-toggle" onclick="togglePasswordVisibility('s_pas', this)"></i>
-                                </div>
-                            </div>
-                            <button class="btn-action" onclick="saveAdminSettings()">Saqlash</button>
+                    <div style="border:1px solid var(--border-color); padding:10px; border-radius:5px; margin-bottom:10px;">
+                        <h5 id="lbl-set-route" style="margin-bottom: 8px;">Yo'nalishlarni sozlash</h5>
+                        <button class="btn btn-blue" onclick="addRoutePrompt()"><i class="fas fa-plus"></i> <span id="btn-route-add">Yo'nalish kiritish</span></button>
+                        <button class="btn btn-green" id="btn-route-edit-mode" onclick="toggleRouteEditMode()"><i class="fas fa-edit"></i> <span id="lbl-edit-mode-text">Yo'nalishlarni tahrirlash</span></button>
+                        <button class="btn btn-red" id="btn-clear-storage-direct" onclick="clearLocalStorageForce()"><i class="fas fa-trash"></i> <span>Keshni Tozalash</span></button>
+                    </div>
+
+                    <div style="border:1px solid var(--border-color); padding:10px; border-radius:5px; margin-bottom:10px;">
+                        <h5 id="lbl-set-table">Jadvalni sozlash</h5>
+                        <button class="btn btn-green" onclick="handleTableSync()"><i class="fas fa-sync"></i> <span id="btn-table-sync">O'ZGARTIRISH</span></button>
+                    </div>
+
+                    <div style="border:1px solid var(--border-color); padding:10px; border-radius:5px;">
+                        <h5 id="lbl-set-stop">Bekatlarni sozlash</h5>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn btn-blue" style="font-size:12px;" onclick="handleAddStop()"><i class="fas fa-plus"></i> <span id="btn-stop-add">Bekat qo'shish</span></button>
+                            <button class="btn btn-red" style="font-size:12px;" onclick="handleDeleteStop()"><i class="fas fa-trash"></i> <span id="btn-stop-del">Bekat o'chirish</span></button>
                         </div>
                     </div>
-
-                    <!-- Yo'nalishlarni sozlash -->
-                    <div class="sub-page">
-                        <div class="sub-title">Yoʻnalishlarni sozlash</div>
-                        <button class="btn-action" onclick="alert('Yangi yoʻnalish kiritish oynasi faollashdi!')"><i class="fa-solid fa-plus"></i> Yoʻnalish kiritish</button>
-                        <button class="btn-action btn-danger" onclick="alert('Maʼlumotlarni tahrirlash (Oʻzgartirish / Oʻchirish) tizimi tayyor!')"><i class="fa-solid fa-trash-can"></i> Maʼlumotlarni tahrirlash</button>
-                    </div>
-
-                    <!-- Jadvalni sozlash -->
-                    <div class="sub-page">
-                        <div class="sub-title">Jadvalni sozlash <i class="fa-solid fa-gear" style="color:#28a745; cursor:pointer;" onclick="alert('Vaqt maʼlumotlari jadvalini oʻzgartirish belgisi bosildi!')" title="O'zgartirish"> O'zgartirish</i></div>
-                    </div>
-
-                    <!-- Bekatlarni sozlash -->
-                    <div class="sub-page">
-                        <div class="sub-title">Bekatlarni sozlash</div>
-                        <button class="btn-action" onclick="alert('Bekat qoʻshish funksiyasi')"><i class="fa-solid fa-location-dot"></i> Bekat qoʻshish</button>
-                        <button class="btn-action btn-danger" onclick="alert('Bekat oʻchirish funksiyasi')"><i class="fa-solid fa-eraser"></i> Bekat oʻchirish</button>
-                    </div>
-
-                    <!-- Tilni sozlash -->
-                    <div class="sub-page">
-                        <div class="sub-title">Tilni sozlash</div>
-                        <select style="width:100%; padding:5px; font-size:12px;"><option>O'zbekcha</option><option>English</option></select>
-                    </div>
                 </div>
             </div>
-
         </div>
 
-        <!-- Ajratuvchi chiziq va sichqoncha bilan boshqariladigan g'ildirak o'rni -->
-        <div class="sidebar-divider" id="sidebarDivider">
-            <div class="scroll-thumb-indicator" id="scrollIndicator"></div>
+        <div class="sidebar-splitter" onclick="handleSplitterClick(event)">
+            <div class="scroll-indicator"></div>
         </div>
     </div>
 
-    <!-- Jonli Xarita Konteyneri -->
+    <div class="timetable-panel" id="timetable-panel">
+        <h3 style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="lbl-table-title">Yo'nalishlar Jadvali</span>
+            <i class="fas fa-times" style="cursor:pointer;" onclick="toggleTimetablePanel()"></i>
+        </h3>
+        <div id="timetable-content"></div>
+    </div>
+
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
+    <!-- Leaflet va skriptlar yuklanishi -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
     <script>
-        // 1. GLOBAL MA'LUMOTLAR OMBORI (3 TA YO'NALISH)
-        const routesData = {
-            1: {
-                id: 5,
-                name: "Aeroport – Temir yoʻl vokzali",
-                distance: 8,
-                speed: 60,
-                busCount: 5,
-                color: "red",
-                // Urganch bo'yicha taxminiy kordinatalar chizig'i
-                coords: [
-                    [41.5342, 60.6322], // Aeroport
-                    [41.5450, 60.6250], // Chorraha 1
-                    [41.5512, 60.6280], // Bekat 1
-                    [41.5555, 60.6310], // Chorraha 2
-                    [41.5620, 60.6480]  // Vokzal
-                ],
-                stations: ["Aeroport", "1-Chorraha", "Avtoturargoh bekat", "Markaziy chorraha", "Temir yo'l vokzali"]
+        let map;
+        let activeTheme = localStorage.getItem('savedTheme') || 'day';
+        let currentLanguage = localStorage.getItem('savedLanguage') || 'uz';
+        let activeRouteId = localStorage.getItem('savedActiveRouteId') ? parseInt(localStorage.getItem('savedActiveRouteId')) : null;
+        let isEditModeActive = false;
+        let mapTileLayer = null;
+        let routingControl = null; // Avtomatik ko'cha chizuvchi ob'ekt
+
+        // 1-MUAMMO ECHIMI: "Bekatars" so'zi "Bekatlar"ga to'g'rilandi.
+        const dictionary = {
+            uz: {
+                menuProfil: "Profil", myInfo: "Mening ma'lumotlarim", surname: "Familiya", name: "Ism", phone: "Telefon raqam",
+                adminTitle: "Admin va parol kiritish", login: "Login (Admin)", pass: "Parol", loginBtn: "Kirish",
+                menuYonalish: "Yo'nalishlar", menuJadval: "Jadval", menuBekat: "Bekatlar", menuTil: "Til",
+                currentLangText: "Hozirgi til:", menuSozlamalar: "Sozlamalar (Admin)", setAdmin: "Admin va parolni sozlash",
+                newLogin: "Yangi Admin logini", newPass: "Yangi Parol", save: "Saqlash", setRoute: "Yo'nalishlarni sozlash",
+                routeAdd: "Yo'nalish kiritish", routeEdit: "Yo'nalishlarni tahrirlash", setTable: "Jadvalni sozlash",
+                tableSync: "O'ZGARTIRISH", setStop: "Bekatlarni sozlash", stopAdd: "Bekat qo'shish", stopDel: "Bekat o'chirish",
+                setLang: "Tilni sozlash", tablePanelTitle: "Yo'nalishlar Jadvali", dayMode: "Kunduzgi", nightMode: "Kechki",
+                distanceStr: "Masofa", busCountStr: "Avtobuslar", routeStopsStr: "Yo'nalish bekatlari:", intervalStr: "Harakatlanish intervali",
+                stationStr: "Bekat", arrivalStr: "Kelish vaqti"
             },
-            2: {
-                id: 7,
-                name: "Urganch dehqon bozori – Urganch Davlat Universiteti",
-                distance: 6,
-                speed: 60,
-                busCount: 4,
-                color: "orange", // Sariq ko'rinishi yaxshi chiqishi uchun quyuqroq sariq/olovrang
-                coords: [
-                    [41.5515, 60.6120], // Dehqon bozori
-                    [41.5535, 60.6180], // Chorraha
-                    [41.5560, 60.6230], // Bekat
-                    [41.5520, 60.6300], // Chorraha 2
-                    [41.5480, 60.6290]  // UrDU
-                ],
-                stations: ["Dehqon bozori", "G'alaba chorrahasi", "Siyosiy bekat", "Tinchlik chorrahasi", "UrDU bosh bino"]
+            ru: {
+                menuProfil: "Профиль", myInfo: "Мои данные", surname: "Фамилия", name: "Имя", phone: "Номер телефона",
+                adminTitle: "Вход для Админа", login: "Логин (Админ)", pass: "Пароль", loginBtn: "Войти",
+                menuYonalish: "Маршруты", menuJadval: "Расписание", menuBekat: "Остановки", menuTil: "Язык",
+                currentLangText: "Текущий язык:", menuSozlamalar: "Настройки (Админ)", setAdmin: "Настройка админа и пароля",
+                newLogin: "Новый логин", newPass: "Новый пароль", save: "Сохранить", setRoute: "Настройка маршрутов",
+                routeAdd: "Добавить маршрут", routeEdit: "Редактировать маршруты", setTable: "Настройка расписания",
+                tableSync: "ИЗМЕНИТЬ", setStop: "Настройка остановок", stopAdd: "Добавить остановку", stopDel: "Удалить остановку",
+                setLang: "Настройка языка", tablePanelTitle: "Расписание маршрутов", dayMode: "Дневной", nightMode: "Ночной",
+                distanceStr: "Расстояние", busCountStr: "Автобусы", routeStopsStr: "Остановки маршрута:", intervalStr: "Интервал движения",
+                stationStr: "Остановка", arrivalStr: "Время прибытия"
             },
-            3: {
-                id: 9,
-                name: "Urganch Amir Temur parki – Eski TATU Urganch filiali",
-                distance: 4,
-                speed: 60,
-                busCount: 3,
-                color: "green",
-                coords: [
-                    [41.5650, 60.6200], // Amir Temur parki
-                    [41.5610, 60.6210], // Bekat 1
-                    [41.5580, 60.6220], // Chorraha
-                    [41.5550, 60.6150]  // Eski TATU filiali
-                ],
-                stations: ["Amir Temur istirohat bog'i", "Yoshlar bekati", "Al-Xorazmiy chorrahasi", "Eski TATU binoli bekat"]
+            en: {
+                menuProfil: "Profile", myInfo: "My Info", surname: "Surname", name: "First Name", phone: "Phone Number",
+                adminTitle: "Admin Login", login: "Login (Admin)", pass: "Password", loginBtn: "Login",
+                menuYonalish: "Routes", menuJadval: "Timetable", menuBekat: "Bus Stops", menuTil: "Language",
+                currentLangText: "Current Language:", menuSozlamalar: "Settings (Admin)", setAdmin: "Admin & Password Settings",
+                newLogin: "New Admin Login", newPass: "New Password", save: "Save", setRoute: "Route Settings",
+                routeAdd: "Add Route", routeEdit: "Edit Routes", setTable: "Timetable Settings",
+                tableSync: "MODIFY", setStop: "Stop Settings", stopAdd: "Add Stop", stopDel: "Delete Stop",
+                setLang: "Language Settings", tablePanelTitle: "Routes Timetable", dayMode: "Day Mode", nightMode: "Night Mode",
+                distanceStr: "Distance", busCountStr: "Buses", routeStopsStr: "Route Stops:", intervalStr: "Movement Interval",
+                stationStr: "Station", arrivalStr: "Arrival Time"
             }
         };
 
-        // Admin Tizimi standart ma'lumotlari
-        let systemAdminLogin = "admin";
-        let systemAdminPass = "12345";
+        if(!localStorage.getItem('adminLogin')) localStorage.setItem('adminLogin', 'Izzat');
+        if(!localStorage.getItem('adminPass')) localStorage.setItem('adminPass', 'Urganch2026');
+        if(!localStorage.getItem('pSurname')) localStorage.setItem('pSurname', 'Eshonov');
+        if(!localStorage.getItem('pName')) localStorage.setItem('pName', 'Jasur');
+        if(!localStorage.getItem('pPhone')) localStorage.setItem('pPhone', '+998991234567');
 
-        // 2. XARITANI INICIALIZATSIYA QILISH (Urganch markazi markaz qilib olinadi)
-        const map = L.map('map', {
-            zoomControl: false // Standart +/- ni o'chiramiz, o'ng pastga o'zimiz qo'shamiz
-        }).setView([41.5515, 60.6310], 13);
-
-        // Kunduzgi standart qatlam
-        const dayTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Zoom boshqaruvini O'ng pastki burchakka joylashtirish
-        L.control.zoom({
-            position: 'bottomright'
-        }).addTo(map);
-
-        // Xarita chizmalari va marker guruhlari
-        let activePolyline = null;
-        let activeMarkers = [];
-
-        // 3. MENYUNI OCHISH / YOPISH FUNKSIYASI (3 ta chiziq bosilganda)
-        const sidebar = document.getElementById('sidebar');
-        const menuToggleBtn = document.getElementById('menuToggleBtn');
-
-        menuToggleBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-        });
-
-        // Ko'k rang bilan ajralib turish va Akordeon yopilib/ochilishi
-        function toggleMenuSection(headerElement) {
-            const allHeaders = document.querySelectorAll('.menu-header');
-            const currentBody = headerElement.nextElementSibling;
-
-            // Ko'k rang effekti berish
-            allHeaders.forEach(h => {
-                if(h !== headerElement) h.classList.remove('active');
-            });
-            headerElement.classList.toggle('active');
-
-            // Kontentni ochish yoki yopish
-            if (currentBody.style.display === "block") {
-                currentBody.style.display = "none";
-            } else {
-                // Hammasini yopib keyin ochish
-                document.querySelectorAll('.menu-body').forEach(b => b.style.display = 'none');
-                currentBody.style.display = "block";
+        let initialRoutes = [
+            {
+                id: 5,
+                name: "Urganch Aeroporti – Temir yo'l vokzali",
+                distance: 7.2,
+                busCount: 5,
+                speed: 40,
+                color: "#ff3333",
+                coords: [
+                    [41.5342, 60.6415], [41.5365, 60.6402], [41.5398, 60.6371], [41.5422, 60.6348],
+                    [41.5448, 60.6328], [41.5475, 60.6305], [41.5495, 60.6292], [41.5518, 60.6282],
+                    [41.5540, 60.6272], [41.5565, 60.6262], [41.5592, 60.6252], [41.5620, 60.6246],
+                    [41.5652, 60.6241]
+                ],
+                stops: ["Urganch Aeroporti", "Xonqa ko'chasi chorraha", "Al-Xorazmiy maydoni", "Markaziy Universam", "Temir yo'l vokzali"]
+            },
+            {
+                id: 7,
+                name: "Urganch dehqon bozori – Urganch Davlat Universiteti (UrDU)",
+                distance: 4.8,
+                busCount: 4,
+                speed: 35,
+                color: "#ff9900",
+                coords: [
+                    [41.5555, 60.6120], [41.5552, 60.6150], [41.5548, 60.6185], [41.5545, 60.6202],
+                    [41.5542, 60.6215], [41.5538, 60.6232], [41.5532, 60.6250], [41.5525, 60.6270],
+                    [41.5518, 60.6290], [41.5500, 60.6300], [41.5482, 60.6308]
+                ],
+                stops: ["Urganch Dehqon bozori", "Paxtakor chorrahasi", "Xorazm teatri", "Markaziy maydon", "Urganch Davlat Universiteti"]
+            },
+            {
+                id: 9,
+                name: "Urganch Amir Temur parki – Eski TATU Urganch filiali",
+                distance: 5.5,
+                busCount: 3,
+                speed: 38,
+                color: "#28a745",
+                coords: [
+                    [41.5580, 60.6010], [41.5590, 60.6045], [41.5598, 60.6085], [41.5608, 60.6115],
+                    [41.5615, 60.6140], [41.5625, 60.6175], [41.5638, 60.6210], [41.5655, 60.6220],
+                    [41.5670, 60.6230]
+                ],
+                stops: ["Amir Temur istirohat bog'i", "Tinchlik ko'chasi", "Istiqlol chorrahasi", "Yoshlar ko'li", "Shimoliy mikrorayon"]
             }
+        ];
+
+        if(!localStorage.getItem('routesData')) {
+            localStorage.setItem('routesData', JSON.stringify(initialRoutes));
         }
 
-        // 4. YO'NALISHLARNI RO'YXATGA QO'SHISH VA SICHQONCHA BOSILGANDA XARITADA KO'RSATISH
-        const routesListContainer = document.getElementById('routesListContainer');
+        let routesData = JSON.parse(localStorage.getItem('routesData'));
 
-        function renderRoutes() {
-            routesListContainer.innerHTML = "";
-            Object.keys(routesData).forEach(key => {
-                const r = routesData[key];
-                const item = document.createElement('div');
-                item.className = `route-item`;
-                item.style.borderLeftColor = r.color;
-                item.innerHTML = `
-                    <div style="font-weight:bold; font-size:13px;">№ ${r.id} | ${r.name}</div>
-                    <div style="font-size:11px; color:#555; margin-top:3px;">Masofa: ${r.distance} km | Avtobuslar: ${r.busCount} ta | Tezlik: ${r.speed} km/s</div>
-                `;
-                item.addEventListener('click', () => {
-                    // Faqat shu bosilgan yo'nalishni faollashtirish
-                    document.querySelectorAll('.route-item').forEach(el => el.classList.remove('r-active'));
-                    item.classList.add('r-active');
-                    drawRouteOnMap(key);
-                });
-                routesListContainer.appendChild(item);
-            });
-        }
+        let mapLines = {};
+        let staticMarkers = [];
+        let dynamicBusMarkers = [];
+        let busTimers = [];
 
-        // Xaritada faqat bitta tanlangan yo'nalishni chizish (Boshqalarini o'chirish)
-        function drawRouteOnMap(routeKey) {
-            // Avvalgi chizmalarni tozalash
-            if(activePolyline) map.removeLayer(activePolyline);
-            activeMarkers.forEach(m => map.removeLayer(m));
-            activeMarkers = [];
+        function initMap() {
+            map = L.map('map', { zoomControl: false }).setView([41.5535, 60.6225], 14);
 
-            const route = routesData[routeKey];
-
-            // Yo'nalish chizig'ini tortish (Qizil, Sariq yoki Yashil)
-            activePolyline = L.polyline(route.coords, {
-                color: route.color === 'orange' ? '#ffcc00' : route.color, // Sariq aniq ko'rinishi uchun
-                weight: 5,
-                opacity: 0.8
+            mapTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
-            // Xaritani chiziq sig'adigan qilib moslash
-            map.fitBounds(activePolyline.getBounds());
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-            // Bekat va Chorrahalarni ikonka sifatida joylashtirish
-            route.coords.forEach((coord, index) => {
-                let iconHtml = "";
-                let titleText = route.stations[index] || "Nuqta";
+            setTheme(activeTheme);
+            renderMapElements();
+            renderRoutesList();
+            renderStopsList();
+            loadProfileData();
+            changeLanguage(currentLanguage);
 
-                // Chorraha yoki bekatligini aniqlash (Shartli ravishda juft o'rinlar chorraha, toq bekat)
-                if(index % 2 === 0) {
-                    iconHtml = `<i class="fa-solid fa-map-pin" style="color:blue; font-size:18px;"></i>`;
-                    titleText = "Bekat: " + titleText;
-                } else {
-                    iconHtml = `<i class="fa-solid fa-diamond-turn-right" style="color:#d9534f; font-size:16px;"></i>`;
-                    titleText = "Chorraha: " + titleText;
+            if(activeRouteId) {
+                selectRouteOnMap(activeRouteId);
+            }
+        }
+
+        function renderMapElements() {
+            // Avvalgi chiziqlar va taymerlarni tozalash
+            Object.values(mapLines).forEach(line => map.removeLayer(line));
+            staticMarkers.forEach(m => map.removeLayer(m));
+            dynamicBusMarkers.forEach(m => map.removeLayer(m));
+            busTimers.forEach(t => clearInterval(t));
+            if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+
+            mapLines = {}; staticMarkers = []; dynamicBusMarkers = []; busTimers = [];
+
+            const stopIcon = L.divIcon({
+                html: '<i class="fas fa-map-marker-alt" style="color:#007bff; font-size:22px; text-shadow: 0 0 3px #fff;"></i>',
+                className: 'custom-div-icon', iconSize: [24, 24], iconAnchor: [12, 22]
+            });
+
+            const crossroadIcon = L.divIcon({
+                html: '<i class="fas fa-circle" style="color:#6c757d; font-size:6px;"></i>',
+                className: 'custom-div-icon', iconSize: [8, 8], iconAnchor: [4, 4]
+            });
+
+            const busIconHtml = (color) => L.divIcon({
+                html: `<i class="fas fa-bus" style="color:${color}; font-size:16px; background: white; padding: 4px; border-radius: 50%; border: 2px solid ${color}; box-shadow: 0 2px 5px rgba(0,0,0,0.4);"></i>`,
+                className: 'custom-div-icon', iconSize: [26, 26], iconAnchor: [13, 13]
+            });
+
+            routesData.forEach(route => {
+                // Oddiy ko'rish rejimida yoki faol bo'lmagan yo'nalishlar uchun statik chiziq chizish
+                if (!isEditModeActive || route.id !== activeRouteId) {
+                    let polyline = L.polyline(route.coords, {
+                        color: route.color,
+                        weight: (route.id === activeRouteId) ? 7 : 4,
+                        opacity: (route.id === activeRouteId) ? 1.0 : 0.6
+                    }).addTo(map);
+
+                    mapLines[route.id] = polyline;
+
+                    if (route.coords.length >= 2) {
+                        let startPoint = route.coords[0];
+                        let endPoint = route.coords[route.coords.length - 1];
+
+                        let startMarker = L.marker(startPoint, {icon: stopIcon}).addTo(map).bindPopup(`<b>${route.stops[0] || 'Start'}</b>`);
+                        let endMarker = L.marker(endPoint, {icon: stopIcon}).addTo(map).bindPopup(`<b>${route.stops[route.stops.length - 1] || 'End'}</b>`);
+                        staticMarkers.push(startMarker, endMarker);
+
+                        for(let i = 1; i < route.coords.length - 1; i++) {
+                            let crossMarker = L.marker(route.coords[i], {icon: crossroadIcon}).addTo(map);
+                            staticMarkers.push(crossMarker);
+                        }
+                    }
+
+                    // Avtobuslar harakati simulyatsiyasi
+                    if (route.coords.length > 1) {
+                        let busMarker = L.marker(route.coords[0], {icon: busIconHtml(route.color)}).addTo(map);
+                        dynamicBusMarkers.push(busMarker);
+
+                        let currentStep = 0; let direction = 1;
+                        let intervalId = setInterval(() => {
+                            currentStep += direction;
+                            if (currentStep >= route.coords.length) { direction = -1; currentStep = route.coords.length - 2; }
+                            else if (currentStep < 0) { direction = 1; currentStep = 1; }
+                            if(route.coords[currentStep]) busMarker.setLatLng(route.coords[currentStep]);
+                        }, 2000 + (route.id * 150));
+                        busTimers.push(intervalId);
+                    }
                 }
-
-                const markerIcon = L.divIcon({
-                    html: iconHtml,
-                    className: 'dummy-marker',
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                });
-
-                const marker = L.marker(coord, {icon: markerIcon}).bindPopup(titleText).addTo(map);
-                activeMarkers.push(marker);
             });
 
-            // JONLI AVTOBUS HARAKATI EFFEKTI (Ikonka bilan harakatlanadi)
-            for(let i=0; i<1; i++) { // Ko'rgazmali tarzda 1 tadan jonli avtobus qo'shamiz
-                const busIcon = L.divIcon({
-                    html: `<i class="fa-solid fa-bus" style="color:black; background:white; padding:3px; border-radius:50%; border:2px solid ${route.color}; font-size:16px; box-shadow:0 0 5px rgba(0,0,0,0.5);"></i>`,
-                    className: 'bus-live-icon',
-                    iconSize: [24, 24]
-                });
-
-                let currentCoordIndex = 0;
-                const busMarker = L.marker(route.coords[0], {icon: busIcon}).addTo(map);
-                activeMarkers.push(busMarker);
-
-                // Avtobus harakat simulyatsiyasi
-                setInterval(() => {
-                    currentCoordIndex = (currentCoordIndex + 1) % route.coords.length;
-                    busMarker.setLatLng(route.coords[currentCoordIndex]);
-                }, 4000 + (Math.random()*2000)); // Har 4-6 soniyada keyingi bekatga o'tadi
+            // 2-MUAMMO ECHIMI: Tahrirlash rejimida haqiqiy ko'chalardan o'tuvchi OSRM Routingni ulash
+            if(isEditModeActive && activeRouteId) {
+                setupEditableRouting();
             }
         }
 
-        // 5. JADVAL TIZIMI (Avtomatik hisob-kitob va o'ng paneldagi chiqish)
-        const rightSchedulePanel = document.getElementById('rightSchedulePanel');
-        const scheduleContainer = document.getElementById('scheduleContainer');
+        function setupEditableRouting() {
+            let route = routesData.find(r => r.id === activeRouteId);
+            if(!route) return;
 
-        function generateAutomaticSchedule() {
-            scheduleContainer.innerHTML = "";
-            Object.keys(routesData).forEach(key => {
-                const r = routesData[key];
-                // Avtomatik interval hisoblash (Masofa / Tezlik va avtobus soniga qarab taxminiy vaqt)
-                const totalTimeMinutes = Math.round((r.distance / r.speed) * 60);
-                const interval = Math.round(totalTimeMinutes / r.busCount * 10) || 5;
+            let startPt = route.coords[0];
+            let endPt = route.coords[route.coords.length - 1];
 
-                let html = `
-                    <div style="margin-top:15px; background:#f9f9f9; padding:8px; border-radius:6px; border-left:4px solid ${r.color};">
-                        <strong style="font-size:13px;">№ ${r.id} yo'nalish jadvali</strong>
-                        <table class="schedule-table">
-                            <tr><th>Avtobus №</th><th>Aylanma Vaqt</th><th>Interval</th></tr>
-                            <tr><td>${r.busCount} ta faol</td><td>${totalTimeMinutes} daqiqa</td><td>Har ${interval} daqiqada</td></tr>
-                        </table>
-                        <div style="font-size:11px; color:#666; margin-top:5px;">Bekatlar bo'yicha qatnov: 07:00 dan 21:00 gacha.</div>
-                    </div>
-                `;
-                scheduleContainer.innerHTML += html;
+            // Haqiqiy ko'chalarni topib chizuvchi Leaflet Routing boshqaruvi
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(startPt[0], startPt[1]),
+                    L.latLng(endPt[0], endPt[1])
+                ],
+                routeWhileDragging: true,
+                lineOptions: {
+                    styles: [{ color: route.color, opacity: 1, weight: 7 }]
+                },
+                createMarker: function(i, waypoint, n) {
+                    // Ko'chirish nuqtalariga chiroyli dizayn berish
+                    return L.marker(waypoint.latLng, {
+                        draggable: true,
+                        icon: L.divIcon({
+                            html: `<i class="fas fa-thumbtack" style="color:#dc3545; font-size:26px; text-shadow: 0 0 4px #fff;"></i>`,
+                            className: 'custom-div-icon', iconSize: [28, 28], iconAnchor: [14, 26]
+                        })
+                    });
+                }
+            }).addTo(map);
+
+            // Nuqtalar sichqoncha yordamida sudrab ko'chirilganda koordinatalarni real ko'cha bo'ylab yangilash
+            routingControl.on('routesfound', function(e) {
+                let routes = e.routes;
+                let summary = routes[0].summary;
+                let coordinates = routes[0].coordinates;
+
+                // Yangi ko'cha yo'nalishi koordinatalarini massivga o'tkazish
+                route.coords = coordinates.map(c => [c.lat, c.lng]);
+                route.distance = Math.round(summary.totalDistance / 100) / 10; // Masofani km da hisoblash
+
+                localStorage.setItem('routesData', JSON.stringify(routesData));
             });
         }
 
-        function toggleRightSchedule() {
-            const schedHeader = document.getElementById('menuScheduleHeader');
-            if(schedHeader.classList.contains('active')) {
-                rightSchedulePanel.classList.add('open');
+        function renderRoutesList() {
+            const container = document.getElementById('routes-list-container');
+            container.innerHTML = '';
+            routesData.forEach(route => {
+                let div = document.createElement('div');
+                div.className = 'route-list-item';
+                div.id = `route-item-${route.id}`;
+                if(route.id === activeRouteId) div.classList.add('selected-active');
+                div.style.borderLeft = `5px solid ${route.color}`;
+                div.innerHTML = `<strong>№${route.id}</strong>: ${route.name}`;
+                div.onclick = () => { selectRouteOnMap(route.id); };
+                container.appendChild(div);
+            });
+        }
+
+        function renderStopsList() {
+            const container = document.getElementById('stops-list-container');
+            container.innerHTML = '';
+
+            if(!activeRouteId) {
+                container.innerHTML = `<p style="padding:10px; color:#888;">Bekatlarni ko'rish uchun yo'nalish tanlang.</p>`;
+                return;
+            }
+
+            let route = routesData.find(r => r.id === activeRouteId);
+            if(route && route.stops) {
+                route.stops.forEach((stopName, index) => {
+                    let div = document.createElement('div');
+                    div.className = 'route-list-item';
+                    div.innerHTML = `<span style="background:${route.color}; color:white; padding:2px 6px; border-radius:50%; margin-right:8px; font-size:11px;">${index+1}</span> <i class="fas fa-map-marker-alt" style="color:#666;"></i> ${stopName}`;
+                    container.appendChild(div);
+                });
+            }
+        }
+
+        function selectRouteOnMap(routeId) {
+            activeRouteId = routeId;
+            localStorage.setItem('savedActiveRouteId', routeId);
+
+            document.querySelectorAll('.route-list-item').forEach(el => el.classList.remove('selected-active'));
+            let activeItem = document.getElementById(`route-item-${routeId}`);
+            if(activeItem) activeItem.classList.add('selected-active');
+
+            if(isEditModeActive) {
+                renderMapElements();
             } else {
-                rightSchedulePanel.classList.remove('open');
+                routesData.forEach(route => {
+                    if(mapLines[route.id]) {
+                        if(route.id === routeId) {
+                            mapLines[route.id].setStyle({ weight: 7, opacity: 1.0 });
+                            map.fitBounds(mapLines[route.id].getBounds(), {padding: [30, 30]});
+                        } else {
+                            mapLines[route.id].setStyle({ weight: 4, opacity: 0.3 });
+                        }
+                    }
+                });
+            }
+            renderStopsList();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function handleSplitterClick(e) {
+            e.stopPropagation();
+            toggleSidebar();
+        }
+
+        function toggleSection(id) {
+            const body = document.getElementById(id);
+            const isVisible = body.style.display === 'block';
+            document.querySelectorAll('.menu-body').forEach(el => el.style.display = 'none');
+            body.style.display = isVisible ? 'none' : 'block';
+        }
+
+        function toggleTimetablePanel() {
+            const panel = document.getElementById('timetable-panel');
+            panel.classList.toggle('open');
+            if(panel.classList.contains('open')) buildTimetable();
+        }
+
+        function setTheme(theme) {
+            activeTheme = theme;
+            localStorage.setItem('savedTheme', theme);
+            document.body.setAttribute('data-theme', theme);
+            document.getElementById('btn-day').classList.toggle('active', theme === 'day');
+            document.getElementById('btn-night').classList.toggle('active', theme === 'night');
+
+            if(map && mapTileLayer) {
+                map.removeLayer(mapTileLayer);
+                if(theme === 'night') {
+                    mapTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+                    }).addTo(map);
+                } else {
+                    mapTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(map);
+                }
             }
         }
 
-        // 6. BEKATLAR RO'YXATINI AVTOMATIK CHIQARISH
-        const stationsListContainer = document.getElementById('stationsListContainer');
-        function renderStationsList() {
-            stationsListContainer.innerHTML = "";
-            Object.keys(routesData).forEach(key => {
-                const r = routesData[key];
-                let stHtml = `<div style="margin-bottom:10px; font-size:12px;">
-                    <span style="font-weight:bold; color:${r.color};">№ ${r.id} bekatlari:</span>
-                    <ol style="margin-left:15px; margin-top:3px; color:#444;">
-                `;
-                r.stations.forEach(st => {
-                    stHtml += `<li>${st}</li>`;
-                });
-                stHtml += `</ol></div>`;
-                stationsListContainer.innerHTML += stHtml;
-            });
+        function togglePasswordVisibility(id) {
+            const el = document.getElementById(id);
+            el.type = el.type === 'password' ? 'text' : 'password';
         }
 
-        // 7. ADMIN VA PAROL KIRITISH / VALIDATSIYA LOGIKASI
+        function loadProfileData() {
+            document.getElementById('p-surname').value = localStorage.getItem('pSurname');
+            document.getElementById('p-name').value = localStorage.getItem('pName');
+            document.getElementById('p-phone').value = localStorage.getItem('pPhone');
+        }
+
+        function enableEditProfile() {
+            document.getElementById('p-surname').disabled = false;
+            document.getElementById('p-name').disabled = false;
+            document.getElementById('p-phone').disabled = false;
+            document.getElementById('btn-save-profile').style.display = 'block';
+        }
+
+        function saveProfile() {
+            localStorage.setItem('pSurname', document.getElementById('p-surname').value);
+            localStorage.setItem('pName', document.getElementById('p-name').value);
+            localStorage.setItem('pPhone', document.getElementById('p-phone').value);
+            document.getElementById('p-surname').disabled = true;
+            document.getElementById('p-name').disabled = true;
+            document.getElementById('p-phone').disabled = true;
+            document.getElementById('btn-save-profile').style.display = 'none';
+        }
+
         function checkAdminLogin() {
-            const logInp = document.getElementById('loginInput').value;
-            const pasInp = document.getElementById('passInput').value;
-
-            if(logInp === systemAdminLogin && pasInp === systemAdminPass) {
-                alert("Ruxsat berildi! Admin sahifasi Sozlamalar bo'limiga ko'chirildi.");
-                // Profil ichidagi admin oynasini yo'qotish
-                document.getElementById('profAdminPage').style.display = 'none';
-                // Sozlamalardagi panelni to'liq faollashtirish
-                document.getElementById('settAdminPanel').style.border = '2px solid #28a745';
-                // Faqat "Mening ma'lumotlarim" qoladi
-                document.getElementById('profMyInfoPage').style.display = 'block';
+            const u = document.getElementById('login-user').value;
+            const p = document.getElementById('login-pass').value;
+            if(u === localStorage.getItem('adminLogin') && p === localStorage.getItem('adminPass')) {
+                document.getElementById('main-settings-section').style.display = 'block';
             } else {
-                alert("Xato login yoki parol! Qayta urinib ko'ring.");
+                Swal.fire('Error', 'Xato login yoki parol!', 'error');
             }
         }
 
         function saveAdminSettings() {
-            const newAdm = document.getElementById('s_adm').value;
-            const newPas = document.getElementById('s_pas').value;
-            if(newAdm && newPas) {
-                systemAdminLogin = newAdm;
-                systemAdminPass = newPas;
-                alert("Admin login va paroli muvaffaqiyatli o'zgartirildi!");
-            }
+            const newL = document.getElementById('new-admin-login').value;
+            const newP = document.getElementById('new-admin-pass').value;
+            localStorage.setItem('adminLogin', newL);
+            localStorage.setItem('adminPass', newP);
+            Swal.fire('Muvaffaqiyatli', 'Admin sozlamalari saqlandi', 'success');
         }
 
-        // Parol ko'rsatish/yashirish (Ko'zcha belgisi uchun)
-        function togglePasswordVisibility(inputId, iconEl) {
-            const input = document.getElementById(inputId);
-            if(input.type === "password") {
-                input.type = "text";
-                iconEl.classList.remove('fa-eye');
-                iconEl.classList.add('fa-eye-slash');
+        function clearLocalStorageForce() {
+            localStorage.clear();
+            Swal.fire('Tozalandi', 'Tizim keshi toliq tozalandi. Sahifa qayta yuklanadi.', 'success').then(() => {
+                location.reload();
+            });
+        }
+
+        function buildTimetable() {
+            const container = document.getElementById('timetable-content');
+            container.innerHTML = '';
+            routesData.forEach(route => {
+                let h4 = document.createElement('h4');
+                h4.style.margin = '15px 0 5px 0';
+                h4.innerText = `№${route.id} - ${route.name}`;
+                container.appendChild(h4);
+
+                let table = document.createElement('table');
+                table.className = 'table-data';
+                table.innerHTML = `
+                    <thead>
+                        <tr><th>Bekat</th><th>Kelish vaqti</th></tr>
+                    </thead>
+                    <tbody>
+                        ${route.stops.map((stop, index) => `<tr><td>${stop}</td><td>07:${(index * 12 < 10 ? '0' : '') + index * 12}</td></tr>`).join('')}
+                    </tbody>
+                `;
+                container.appendChild(table);
+            });
+        }
+
+        function addRoutePrompt() {
+            Swal.fire({
+                title: 'Yangi yo\'nalish',
+                html: `
+                    <input id="swal-id" class="swal2-input" type="number" placeholder="Yo'nalish raqami (ID)">
+                    <input id="swal-name" class="swal2-input" placeholder="Yo'nalish nomi">
+                    <input id="swal-dist" class="swal2-input" type="number" placeholder="Masofa (km)">
+                `,
+                showCancelButton: true,
+                preConfirm: () => {
+                    return {
+                        id: parseInt(document.getElementById('swal-id').value),
+                        name: document.getElementById('swal-name').value,
+                        distance: parseFloat(document.getElementById('swal-dist').value)
+                    }
+                }
+            }).then((result) => {
+                if(result.value) {
+                    let r = result.value;
+                    if(!r.id || !r.name) return;
+                    let newRoute = {
+                        id: r.id, name: r.name, distance: r.distance || 5, busCount: 3, speed: 40,
+                        color: '#' + Math.floor(Math.random()*16777215).toString(16),
+                        coords: [[41.552, 60.620], [41.558, 60.635]],
+                        stops: ["Bosh bekat", "Oxirgi bekat"]
+                    };
+                    routesData.push(newRoute);
+                    localStorage.setItem('routesData', JSON.stringify(routesData));
+                    renderMapElements();
+                    renderRoutesList();
+                    selectRouteOnMap(r.id);
+                }
+            });
+        }
+
+        function toggleRouteEditMode() {
+            if(!activeRouteId) {
+                Swal.fire('Info', 'Tahrirlash uchun avval yo\'nalish tanlang!', 'warning');
+                return;
+            }
+            isEditModeActive = !isEditModeActive;
+            const btn = document.getElementById('btn-route-edit-mode');
+            const txt = document.getElementById('lbl-edit-mode-text');
+
+            if(isEditModeActive) {
+                btn.style.background = '#dc3545';
+                txt.innerText = "Saqlash va Chiqish";
+                renderMapElements();
             } else {
-                input.type = "password";
-                iconEl.classList.remove('fa-eye-slash');
-                iconEl.classList.add('fa-eye');
+                btn.style.background = '';
+                txt.innerText = "Yo'nalishlarni tahrirlash";
+                localStorage.setItem('routesData', JSON.stringify(routesData));
+                renderMapElements();
+                renderRoutesList();
             }
         }
 
-        // 8. CHAP AJRATUVCHI CHIZIQ VA REZINA SKROLL SICHQONCHA HARAKATI
-        const divider = document.getElementById('sidebarDivider');
-        const scrollIndicator = document.getElementById('scrollIndicator');
-        const sidebarContent = document.getElementById('sidebarContent');
+        function handleTableSync() {
+            buildTimetable();
+            document.getElementById('timetable-panel').classList.add('open');
+        }
 
-        let isDragging = false;
-
-        scrollIndicator.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            document.body.style.cursor = 'ns-resize';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            // Yon panel ichidagi elementlarni yuqoriga/pastga siljitish effektini boshqarish
-            let topPos = e.clientY - sidebar.offsetTop;
-            if(topPos > 100 && topPos < (window.innerHeight - 100)) {
-                scrollIndicator.style.top = (topPos - 20) + 'px';
-                // Kontent skrollini dinamik moslash
-                sidebarContent.scrollTop = (topPos / window.innerHeight) * sidebarContent.scrollHeight;
+        function handleAddStop() {
+            if(!activeRouteId) {
+                Swal.fire('Info', 'Bekat qo\'shish uchun bitta yo\'nalish tanlang!', 'warning');
+                return;
             }
-        });
+            Swal.fire({
+                title: 'Yangi bekat nomi',
+                input: 'text',
+                showCancelButton: true
+            }).then((res) => {
+                if(res.value) {
+                    let route = routesData.find(r => r.id === activeRouteId);
+                    if(route) {
+                        route.stops.push(res.value);
+                        let len = route.coords.length;
+                        if(len >= 2) {
+                            let midLat = (route.coords[len-2][0] + route.coords[len-1][0]) / 2;
+                            let midLng = (route.coords[len-2][1] + route.coords[len-1][1]) / 2;
+                            route.coords.splice(len-1, 0, [midLat, midLng]);
+                        }
+                        localStorage.setItem('routesData', JSON.stringify(routesData));
+                        renderMapElements();
+                        renderStopsList();
+                    }
+                }
+            });
+        }
 
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                document.body.style.cursor = 'default';
+        function handleDeleteStop() {
+            if(!activeRouteId) {
+                Swal.fire('Info', 'Yo\'nalish tanlanmagan!', 'warning');
+                return;
             }
-        });
+            let route = routesData.find(r => r.id === activeRouteId);
+            if(route && route.stops.length > 2) {
+                route.stops.pop();
+                if(route.coords.length > 2) {
+                    route.coords.splice(route.coords.length - 2, 1);
+                }
+                localStorage.setItem('routesData', JSON.stringify(routesData));
+                renderMapElements();
+                renderStopsList();
+            } else {
+                Swal.fire('Info', 'Kamida 2 ta bekat qolishi shart!', 'warning');
+            }
+        }
 
-        // 9. KUNDUZGI VA KECHKI REJIM INTERFEYSI
-        const mapElement = document.getElementById('map');
-        document.getElementById('dayBtn').addEventListener('click', function() {
-            this.classList.add('active');
-            document.getElementById('nightBtn').classList.remove('active');
-            mapElement.classList.remove('dark-mode-map');
-        });
-        document.getElementById('nightBtn').addEventListener('click', function() {
-            this.classList.add('active');
-            document.getElementById('dayBtn').classList.remove('active');
-            mapElement.classList.add('dark-mode-map');
-        });
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('savedLanguage', lang);
 
-        // Tizim yuklanganda dastlabki funksiyalarni ishga tushirish
-        window.onload = () => {
-            renderRoutes();
-            generateAutomaticSchedule();
-            renderStationsList();
-        };
+            document.getElementById('lbl-menu-profil').innerText = dictionary[lang].menuProfil;
+            document.getElementById('lbl-my-info').innerText = dictionary[lang].myInfo;
+            document.getElementById('lbl-surname').innerText = dictionary[lang].surname;
+            document.getElementById('lbl-name').innerText = dictionary[lang].name;
+            document.getElementById('lbl-phone').innerText = dictionary[lang].phone;
+            document.getElementById('lbl-admin-title').innerText = dictionary[lang].adminTitle;
+            document.getElementById('lbl-login').innerText = dictionary[lang].login;
+            document.getElementById('lbl-pass').innerText = dictionary[lang].pass;
+            document.getElementById('btn-login-submit').innerText = dictionary[lang].loginBtn;
+
+            document.getElementById('lbl-menu-yonalish').innerText = dictionary[lang].menuYonalish;
+            document.getElementById('lbl-menu-jadval').innerText = dictionary[lang].menuJadval;
+            document.getElementById('lbl-menu-bekat').innerText = dictionary[lang].menuBekat;
+            document.getElementById('lbl-menu-til').innerText = dictionary[lang].menuTil;
+            document.getElementById('lbl-current-lang').innerText = dictionary[lang].currentLangText;
+
+            document.getElementById('lbl-menu-sozlamalar').innerText = dictionary[lang].menuSozlamalar;
+            document.getElementById('lbl-set-admin').innerText = dictionary[lang].setAdmin;
+            document.getElementById('lbl-new-login').innerText = dictionary[lang].newLogin;
+            document.getElementById('lbl-new-pass').innerText = dictionary[lang].newPass;
+            document.getElementById('btn-admin-save').innerText = dictionary[lang].save;
+            document.getElementById('lbl-set-route').innerText = dictionary[lang].setRoute;
+            document.getElementById('btn-route-add').innerText = dictionary[lang].routeAdd;
+            if(!isEditModeActive) document.getElementById('lbl-edit-mode-text').innerText = dictionary[lang].routeEdit;
+            document.getElementById('lbl-set-table').innerText = dictionary[lang].setTable;
+            document.getElementById('btn-table-sync').innerText = dictionary[lang].tableSync;
+            document.getElementById('lbl-set-stop').innerText = dictionary[lang].setStop;
+            document.getElementById('btn-stop-add').innerText = dictionary[lang].stopAdd;
+            document.getElementById('btn-stop-del').innerText = dictionary[lang].stopDel;
+            document.getElementById('lbl-table-title').innerText = dictionary[lang].tablePanelTitle;
+
+            document.getElementById('txt-mode-day').innerText = dictionary[lang].dayMode;
+            document.getElementById('txt-mode-night').innerText = dictionary[lang].nightMode;
+
+            document.querySelectorAll('.lang-option').forEach(el => el.classList.remove('active-lang'));
+            document.querySelectorAll('.check-icon').forEach(el => el.style.display = 'none');
+
+            const activeOpt = document.getElementById(`lang-${lang}`);
+            if(activeOpt) {
+                activeOpt.classList.add('active-lang');
+                activeOpt.querySelector('.check-icon').style.display = 'block';
+                document.getElementById('current-lang-label').innerText = activeOpt.firstChild.textContent.trim();
+            }
+            renderStopsList();
+            buildTimetable();
+        }
+
+        window.onload = initMap;
     </script>
 </body>
 </html>
